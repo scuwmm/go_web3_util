@@ -2,7 +2,10 @@ module scumm/go_contract_util
 
 go 1.19
 
-require github.com/ethereum/go-ethereum v1.11.1
+require (
+	github.com/ethereum/go-ethereum v1.11.1
+	github.com/holiman/uint256 v1.2.0
+)
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect

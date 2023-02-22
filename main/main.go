@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,23 +20,119 @@ var (
 	privateKey, _ = crypto.HexToECDSA("c9dc95a37d3e5954a176ffb375840f6d6aaefc2dc038abb99b56a7bb74d3a9d6")
 	fromAddress   = common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
 	swapAddress   = common.HexToAddress("0x1fb8547525Ce41Ec1CeCb2763b8E5DfF7A0B46c3")
+	//pancake router合约地址
+	pancakeAddress = common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 )
 
-type Test struct {
-	Num  uint8
-	Name string
+func swap(
+	token0 string,
+	token1 string,
+	//decimal0 int,
+	//decimal1 int,
+	//impact int,
+	//part int,
+	amountIn int64,
+	amountOutMin int64,
+	to string,
+	//chain string,
+	//issuer string,
+	channel string,
+	dealline int64) {
+
+	//链接ETH网络
+	//conn, err := GetEthConn()
+	//if err != nil {
+	//	fmt.Print("Dial err", err)
+	//	return
+	//}
+	//
+	//pancake, err = pancake.NewPancake(pancakeAddress, conn)
+	//if err != nil {
+	//	fmt.Print("NewPancake err", err)
+	//	return
+	//}
+	//
+	//router, err = router.NewRouter(swapAddress, conn)
+	//if err != nil {
+	//	fmt.Print("NewPancake err", err)
+	//	return
+	//}
+
+	swapAbi, _ := abi.JSON(strings.NewReader(router.RouterMetaData.ABI))
+	fmt.Println(swapAbi)
+	pancakeAbi, _ := abi.JSON(strings.NewReader(router.RouterMetaData.ABI))
+	fmt.Println(pancakeAbi)
+
+	desc := router.TransitStructsTransitSwapDescription{
+		SwapType:        0, //aggregatePreMode, aggregatePostMode, swap, cross， 默认0
+		SrcToken:        common.HexToAddress(token0),
+		DstToken:        common.HexToAddress(token1),
+		SrcReceiver:     common.HexToAddress("0x470F30D2E7a2618c3cc374b3382CCFC64F820b48"), //TransitSwap的地址
+		DstReceiver:     common.HexToAddress(to),                                           //token1的接收地址
+		Amount:          big.NewInt(amountIn),                                              //token0的数量
+		MinReturnAmount: big.NewInt(amountOutMin),                                          //最小返回token1的数量 （滑点）
+		Channel:         channel,                                                           // android、ios、web
+		ToChainID:       big.NewInt(0),                                                     //
+		WrappedNative:   common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"), //WBNB的合约地址
+	}
+	fmt.Println(desc)
+
+	uint256Ty, _ := abi.NewType("uint256", "uint64", []abi.ArgumentMarshaling{})
+	addressTyArray, _ := abi.NewType("address[]", "string", []abi.ArgumentMarshaling{})
+	addressTy, _ := abi.NewType("address", "string", []abi.ArgumentMarshaling{})
+	//bytesTy, _ := abi.NewType("bytes", "string", nil)
+	//stringTy, _ := abi.NewType("string", "string", nil)
+
+	args := abi.Arguments{
+		{Type: uint256Ty},
+		{Type: addressTyArray},
+		{Type: addressTy},
+		{Type: uint256Ty},
+	}
+	packed, err := args.Pack(
+		big.NewInt(amountIn),
+		[]common.Address{common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"), common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")}, //swap path
+		common.HexToAddress(to),
+		big.NewInt(dealline),
+	)
+	if err != nil {
+		fmt.Println("Pack1 error:", err)
+	}
+
+	fmt.Println("Pack1 data:", hex.EncodeToString(packed))
+
+	//call := router.TransitStructsCallbytesDescription{
+	//	Flag:      0,
+	//	SrcToken:  common.HexToAddress("0x0000000000000000000000000000000000000000"),
+	//	Calldatas: calldata,
+	//}
+	//fmt.Println(call)
+	fmt.Println("END")
+
+}
+
+func GetEthConn() (*ethclient.Client, error) {
+	conn, err := ethclient.Dial(netUrl)
+	if err != nil {
+		fmt.Print("Dial err", err)
+		return nil, errors.New("GetEthConn failed!")
+	}
+	return conn, nil
 }
 
 func main() {
-	//fmt.Println("abc")
-	//router := gin.Default()
-	//router.GET("/", func(c *gin.Context) {
-	//	c.String(http.StatusOK, "Hello World")
-	//})
-	//router.Run(":8000")
+
+	swap(
+		"0x0000000000000000000000000000000000000000",
+		"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
+		1000000000000000,
+		1,
+		"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
+		"channel",
+		10000000000000)
 
 	//链接ETH网络
-	conn, err := ethclient.Dial(netUrl)
+	conn, err := GetEthConn()
 	if err != nil {
 		fmt.Print("Dial err", err)
 		return
@@ -109,6 +204,30 @@ func main() {
 	}
 
 	//
+	//addressTy, _ := abi.NewType("address", "string", []abi.ArgumentMarshaling{})
+	//bytesTy, _ := abi.NewType("bytes", "string", nil)
+	uint256Ty, _ := abi.NewType("uint256", "uint64", []abi.ArgumentMarshaling{})
+	stringTy, _ := abi.NewType("string", "string", nil)
+
+	args := abi.Arguments{
+		//{Type: addressTy},
+		//{Type: bytesTy},
+		{Type: uint256Ty},
+		{Type: stringTy},
+	}
+	//_params2, _ := hex.DecodeString("0x5B38Da6a701c568545dCfcB03FcB875f56beddC4")
+	packed, err := args.Pack(
+		//common.HexToAddress("0x5B38Da6a701c568545dCfcB03FcB875f56beddC4"),
+		//_params2,
+		big.NewInt(1),
+		"abc",
+	)
+	if err != nil {
+		fmt.Println("abi.Pack error:", err)
+	}
+	fmt.Println("abi.Pack success:", hex.EncodeToString(packed))
+
+	//
 
 	//t := Test{
 	//	Num:  9,
@@ -159,22 +278,6 @@ func main() {
 
 }
 
-//func encodeAbi()  {
-//
-//}
+func swapExactETHForTokens() {
 
-func Encode(data interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	enc := gob.NewEncoder(buf)
-	err := enc.Encode(data)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func Decode(data []byte, to interface{}) error {
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	return dec.Decode(to)
 }
