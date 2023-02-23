@@ -43,43 +43,45 @@
 	fmt.Println("abi.Pack success:", hex.EncodeToString(packed))
 
 #### go 结构体encode （abi.encode(结构体)）
-    import (
-	"encoding/hex"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-    )
-    ...
-    
-    type Transaction struct {
-    To    common.Address `json:"to"`
-    Value *big.Int       `json:"value"`
-    Data  []byte         `json:"data"`
-    }
-    ...
 
-    //golang数组的打包，在生成新类型的时候，中括号"[]"应该在类型名的后边
-    structTy, _ := abi.NewType("tuple[]", "struct ty", []abi.ArgumentMarshaling{
-    {Name: "params1", Type: "address"},
-    {Name: "params2", Type: "uint256"},
-    {Name: "params3", Type: "bytes"},
-    })
-
-	args := abi.Arguments{
-		{Type: structTy},
-	}
-
-    _params3, _ := hex.DecodeString(params3)
-    transactions := []Transaction{
-        {
-            common.HexToAddress(params1), 
-            big.NewInt(params2), 
-            params3
-        }
-    }
-
-	packed, err := args.Pack(
-		transactions,
+	var (
+		aggregateDescriptionTt, _ = abi.NewType("tuple", "aggregateDesc", []abi.ArgumentMarshaling{
+			{Name: "field_one", Type: "address"},
+			{Name: "field_two", Type: "address"},
+			{Name: "field_three", Type: "uint64[]"},
+			{Name: "field_four", Type: "uint64[]"},
+			{Name: "field_five", Type: "address[]"},
+			{Name: "field_six", Type: "address[]"},
+			{Name: "field_seven", Type: "bytes[]"},
+		})
+		args = abi.Arguments{
+			{Type: aggregateDescriptionTt},
+		}
 	)
 
-	argPacked := hexutil.Encode(packed)
+	record := struct {
+		FieldOne   common.Address
+		FieldTwo   common.Address
+		FieldThree []uint64
+		FieldFour  []uint64
+		FieldFive  []common.Address
+		FieldSix   []common.Address
+		FieldSeven [][]byte
+	}{
+		common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
+		common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
+		[]uint64{997000000000000}, //[]big.Int{*big.NewInt(997000000000000)},
+		[]uint64{0},               //[]big.Int{*big.NewInt(0)},
+		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		[][]byte{swapExactETHForTokensData},
+	}
+
+	packed, err := args.Pack(&record)
+	if err != nil {
+		fmt.Println("Pack1 error:", err)
+	}
+
+	fmt.Println("Pack1 data:", hex.EncodeToString(packed))
 
 

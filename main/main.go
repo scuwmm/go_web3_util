@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
+	"scumm/go_contract_util/pancake"
 	"scumm/go_contract_util/router"
 	"strings"
 )
@@ -40,27 +42,24 @@ func swap(
 	dealline int64) {
 
 	//链接ETH网络
-	//conn, err := GetEthConn()
-	//if err != nil {
-	//	fmt.Print("Dial err", err)
-	//	return
-	//}
-	//
+	conn, err := GetEthConn()
+	if err != nil {
+		fmt.Print("Dial err", err)
+		return
+	}
+
+	defer conn.Close()
+
 	//pancake, err = pancake.NewPancake(pancakeAddress, conn)
 	//if err != nil {
 	//	fmt.Print("NewPancake err", err)
 	//	return
 	//}
 	//
-	//router, err = router.NewRouter(swapAddress, conn)
-	//if err != nil {
-	//	fmt.Print("NewPancake err", err)
-	//	return
-	//}
 
 	swapAbi, _ := abi.JSON(strings.NewReader(router.RouterMetaData.ABI))
 	fmt.Println(swapAbi)
-	pancakeAbi, _ := abi.JSON(strings.NewReader(router.RouterMetaData.ABI))
+	pancakeAbi, _ := abi.JSON(strings.NewReader(pancake.PancakeMetaData.ABI))
 	fmt.Println(pancakeAbi)
 
 	desc := router.TransitStructsTransitSwapDescription{
@@ -75,40 +74,100 @@ func swap(
 		ToChainID:       big.NewInt(0),                                                     //
 		WrappedNative:   common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"), //WBNB的合约地址
 	}
-	fmt.Println(desc)
+	//fmt.Println(desc)
 
-	uint256Ty, _ := abi.NewType("uint256", "uint64", []abi.ArgumentMarshaling{})
-	addressTyArray, _ := abi.NewType("address[]", "string", []abi.ArgumentMarshaling{})
-	addressTy, _ := abi.NewType("address", "string", []abi.ArgumentMarshaling{})
-	//bytesTy, _ := abi.NewType("bytes", "string", nil)
-	//stringTy, _ := abi.NewType("string", "string", nil)
-
-	args := abi.Arguments{
-		{Type: uint256Ty},
-		{Type: addressTyArray},
-		{Type: addressTy},
-		{Type: uint256Ty},
-	}
-	packed, err := args.Pack(
-		big.NewInt(amountIn),
-		[]common.Address{common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"), common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")}, //swap path
+	swapExactETHForTokensData, err := GenSwapExactETHForTokensData(
+		pancakeAbi,
+		big.NewInt(amountOutMin),
+		[]common.Address{common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"), common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")},
 		common.HexToAddress(to),
 		big.NewInt(dealline),
 	)
+	if err != nil {
+		fmt.Println("swapExactETHForTokens err:", err)
+	}
+	fmt.Println("swapExactETHForTokensData:", hex.EncodeToString(swapExactETHForTokensData))
+
+	var (
+		aggregateDescriptionTt, _ = abi.NewType("tuple", "aggregateDesc", []abi.ArgumentMarshaling{
+			{Name: "field_one", Type: "address"},
+			{Name: "field_two", Type: "address"},
+			{Name: "field_three", Type: "uint64[]"},
+			{Name: "field_four", Type: "uint64[]"},
+			{Name: "field_five", Type: "address[]"},
+			{Name: "field_six", Type: "address[]"},
+			{Name: "field_seven", Type: "bytes[]"},
+		})
+		args = abi.Arguments{
+			{Type: aggregateDescriptionTt},
+		}
+	)
+
+	record := struct {
+		FieldOne   common.Address
+		FieldTwo   common.Address
+		FieldThree []uint64
+		FieldFour  []uint64
+		FieldFive  []common.Address
+		FieldSix   []common.Address
+		FieldSeven [][]byte
+	}{
+		common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
+		common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
+		[]uint64{997000000000000}, //[]big.Int{*big.NewInt(997000000000000)},
+		[]uint64{0},               //[]big.Int{*big.NewInt(0)},
+		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		[][]byte{swapExactETHForTokensData},
+	}
+
+	packed, err := args.Pack(&record)
 	if err != nil {
 		fmt.Println("Pack1 error:", err)
 	}
 
 	fmt.Println("Pack1 data:", hex.EncodeToString(packed))
 
-	//call := router.TransitStructsCallbytesDescription{
-	//	Flag:      0,
-	//	SrcToken:  common.HexToAddress("0x0000000000000000000000000000000000000000"),
-	//	Calldatas: calldata,
-	//}
+	call := router.TransitStructsCallbytesDescription{
+		Flag:      0,
+		SrcToken:  common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		Calldatas: packed,
+	}
 	//fmt.Println(call)
-	fmt.Println("END")
 
+	auth, _ := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(5))
+	//设置GasPrice
+	gasPrice, _ := conn.SuggestGasPrice(context.Background())
+	auth.GasPrice = gasPrice.Mul(gasPrice, big.NewInt(10))
+	//设置Nonce
+	nonce, _ := conn.PendingNonceAt(context.Background(), fromAddress)
+	fmt.Println("nonce=", nonce)
+	auth.Nonce = big.NewInt(int64(nonce)) //big.NewInt(int64(nonce))
+	auth.GasLimit = uint64(300000)
+	auth.Value = big.NewInt(1000000000000000)
+
+	swap, err := router.NewRouter(swapAddress, conn)
+	if err != nil {
+		fmt.Println("NewContract error", err)
+	}
+
+	trx, err := swap.Swap(auth, desc, call)
+	if err == nil {
+		fmt.Println("Swap:", trx.Hash())
+	}
+
+	fmt.Print("swap END")
+
+}
+
+func GenSwapExactETHForTokensData(pancakeAbi abi.ABI, amountOutMin *big.Int, path []common.Address, toAddress common.Address, deadline *big.Int) ([]byte, error) {
+	return pancakeAbi.Pack(
+		"swapExactETHForTokens",
+		amountOutMin,
+		path,
+		toAddress,
+		deadline,
+	)
 }
 
 func GetEthConn() (*ethclient.Client, error) {
@@ -126,10 +185,10 @@ func main() {
 		"0x0000000000000000000000000000000000000000",
 		"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
 		1000000000000000,
-		1,
+		2,
 		"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
 		"channel",
-		10000000000000)
+		1678950866)
 
 	//链接ETH网络
 	conn, err := GetEthConn()
@@ -169,112 +228,6 @@ func main() {
 		fmt.Println("Owner error", err)
 	}
 	fmt.Println("Executor=", executor)
-
-	//fmt.Println("CallData=", common.Hex2BytesFixed(calldataStr, len(calldataStr)))
-
-	desc := router.TransitStructsTransitSwapDescription{
-		SwapType:        0,
-		SrcToken:        common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		DstToken:        common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
-		SrcReceiver:     common.HexToAddress("0x470F30D2E7a2618c3cc374b3382CCFC64F820b48"),
-		DstReceiver:     common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
-		Amount:          big.NewInt(1000000000000000),
-		MinReturnAmount: big.NewInt(1),
-		Channel:         "web",
-		ToChainID:       big.NewInt(0),
-		WrappedNative:   common.HexToAddress("0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"),
-	}
-	fmt.Println("desc=", desc)
-
-	calldataStr := "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000302bae587ab9e1667a2d2b0fd67730fefdd1ab2d00000000000000000000000003ca6defffd0ed6d9540d770ee8ec33d0ec5756300000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000038ac426d750000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488d00000000000000000000000000000000000000000000000000000000000000010000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488d0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000e47ff36ab50000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008000000000000000000000000003ca6defffd0ed6d9540d770ee8ec33d0ec57563000000000000000000000000000000000000000000000000000000006412c1d20000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b4fbf271143f4fbf7b91a5ded31805e42b2208d6000000000000000000000000302bae587ab9e1667a2d2b0fd67730fefdd1ab2d00000000000000000000000000000000000000000000000000000000"
-	calldata, err := hex.DecodeString(calldataStr)
-	if err != nil {
-		fmt.Println("calldata=", calldata)
-	}
-
-	//通过Abi文件生成请求合约的calldata （abi.encodeWithSelector）
-	routerAbi, err := abi.JSON(strings.NewReader(router.RouterMetaData.ABI))
-	if err == nil {
-		amountOutMin := new(big.Int)
-		amountOutMin.SetString("5000000000000000", 10)
-		data, err := routerAbi.Pack("swapTypeMode", uint8(3))
-		if err == nil {
-			fmt.Println("calldata2=", hex.EncodeToString(data))
-		}
-	}
-
-	//
-	//addressTy, _ := abi.NewType("address", "string", []abi.ArgumentMarshaling{})
-	//bytesTy, _ := abi.NewType("bytes", "string", nil)
-	uint256Ty, _ := abi.NewType("uint256", "uint64", []abi.ArgumentMarshaling{})
-	stringTy, _ := abi.NewType("string", "string", nil)
-
-	args := abi.Arguments{
-		//{Type: addressTy},
-		//{Type: bytesTy},
-		{Type: uint256Ty},
-		{Type: stringTy},
-	}
-	//_params2, _ := hex.DecodeString("0x5B38Da6a701c568545dCfcB03FcB875f56beddC4")
-	packed, err := args.Pack(
-		//common.HexToAddress("0x5B38Da6a701c568545dCfcB03FcB875f56beddC4"),
-		//_params2,
-		big.NewInt(1),
-		"abc",
-	)
-	if err != nil {
-		fmt.Println("abi.Pack error:", err)
-	}
-	fmt.Println("abi.Pack success:", hex.EncodeToString(packed))
-
-	//
-
-	//t := Test{
-	//	Num:  9,
-	//	Name: "name",
-	//}
-
-	//arg := abi.Arguments{}.Pack()
-
-	//
-	//abi.NewType("tuple", "Aggre", []abi.ArgumentMarshaling{
-	//	{Name: ""},
-	//})
-	//
-	//abi.Arguments{
-	//	{Type: string, Name: ""},
-	//}.Pack()
-
-	call := router.TransitStructsCallbytesDescription{
-		Flag:      0,
-		SrcToken:  common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		Calldatas: calldata,
-	}
-	fmt.Println("call=", call)
-	//
-	//auth, _ := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(5))
-	////设置GasPrice
-	//gasPrice, _ := conn.SuggestGasPrice(context.Background())
-	//auth.GasPrice = gasPrice.Mul(gasPrice, big.NewInt(10))
-	////设置Nonce
-	//nonce, _ := conn.PendingNonceAt(context.Background(), fromAddress)
-	//fmt.Println("nonce=", nonce)
-	//auth.Nonce = big.NewInt(77) //big.NewInt(int64(nonce))
-	//auth.GasLimit = uint64(300000)
-	//auth.Value = big.NewInt(1000000000000000)
-	//
-	////调用合约函数 swap
-	//trx, err := swap.Swap(auth, desc, call)
-	//if err == nil {
-	//	fmt.Println("Swap:", trx.Hash())
-	//}
-
-	//hex.Decode
-
-	//hex.EncodeToString()
-
-	//routerAbi :=
-	//abi.Arguments{}
 
 }
 
