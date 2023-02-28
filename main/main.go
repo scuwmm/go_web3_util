@@ -50,7 +50,7 @@ func swap(
 
 	defer conn.Close()
 
-	//pancake, err = pancake.NewPancake(pancakeAddress, conn)
+	//pancake, err := pancake.NewPancake(pancakeAddress, conn)
 	//if err != nil {
 	//	fmt.Print("NewPancake err", err)
 	//	return
@@ -90,35 +90,36 @@ func swap(
 
 	var (
 		aggregateDescriptionTt, _ = abi.NewType("tuple", "aggregateDesc", []abi.ArgumentMarshaling{
-			{Name: "field_one", Type: "address"},
-			{Name: "field_two", Type: "address"},
-			{Name: "field_three", Type: "uint64[]"},
-			{Name: "field_four", Type: "uint64[]"},
-			{Name: "field_five", Type: "address[]"},
-			{Name: "field_six", Type: "address[]"},
-			{Name: "field_seven", Type: "bytes[]"},
+			{Name: "DstToken", Type: "address"},
+			{Name: "Receiver", Type: "address"},
+			{Name: "Amounts", Type: "string[]"},
+			{Name: "NeedTransfer", Type: "uint64[]"},
+			{Name: "Callers", Type: "address[]"},
+			{Name: "ApproveProxy", Type: "address[]"},
+			{Name: "Calls", Type: "bytes[]"},
 		})
 		args = abi.Arguments{
 			{Type: aggregateDescriptionTt},
 		}
 	)
 
+	amount := big.NewInt(int64(997000000000000))
 	record := struct {
-		FieldOne   common.Address
-		FieldTwo   common.Address
-		FieldThree []uint64
-		FieldFour  []uint64
-		FieldFive  []common.Address
-		FieldSix   []common.Address
-		FieldSeven [][]byte
+		DstToken     common.Address
+		Receiver     common.Address
+		Amounts      []string
+		NeedTransfer []uint64
+		Callers      []common.Address
+		ApproveProxy []common.Address
+		Calls        [][]byte
 	}{
-		common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
-		common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
-		[]uint64{997000000000000}, //[]big.Int{*big.NewInt(997000000000000)},
-		[]uint64{0},               //[]big.Int{*big.NewInt(0)},
-		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
-		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
-		[][]byte{swapExactETHForTokensData},
+		DstToken:     common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
+		Receiver:     common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
+		Amounts:      []string{amount.String()},                                                           //[]big.Int{*big.NewInt(997000000000000)},
+		NeedTransfer: []uint64{0},                                                                         //[]big.Int{*big.NewInt(0)},
+		Callers:      []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		ApproveProxy: []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		Calls:        [][]byte{swapExactETHForTokensData},
 	}
 
 	packed, err := args.Pack(&record)
@@ -142,7 +143,7 @@ func swap(
 	//设置Nonce
 	nonce, _ := conn.PendingNonceAt(context.Background(), fromAddress)
 	fmt.Println("nonce=", nonce)
-	auth.Nonce = big.NewInt(int64(nonce)) //big.NewInt(int64(nonce))
+	auth.Nonce = big.NewInt(int64(nonce))
 	auth.GasLimit = uint64(300000)
 	auth.Value = big.NewInt(1000000000000000)
 
@@ -151,12 +152,25 @@ func swap(
 		fmt.Println("NewContract error", err)
 	}
 
+	fmt.Println("address2string:", common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d").String())
+
+	//swap交易
 	trx, err := swap.Swap(auth, desc, call)
 	if err == nil {
-		fmt.Println("Swap:", trx.Hash())
+		fmt.Println("Swap hash:", trx.Hash())
 	}
 
-	fmt.Print("swap END")
+	//生成wap的encode data
+	{
+		swapData, err := swapAbi.Pack("swap", desc, call)
+		if err != nil {
+			fmt.Println("swapData error:", err)
+		}
+		fmt.Println("swapData:", hex.EncodeToString(swapData))
+
+		//swap.
+		fmt.Print("swap END")
+	}
 
 }
 
@@ -181,56 +195,59 @@ func GetEthConn() (*ethclient.Client, error) {
 
 func main() {
 
+	fmt.Println(new(big.Int).SetString("999", 10))
+
+	a := big.NewInt(100)
+	b := big.NewInt(10)
+	c := new(big.Int).Sub(a, b)
+	fmt.Println("a=%s,b=%s,c=%s", a, b, c)
+
 	swap(
 		"0x0000000000000000000000000000000000000000",
 		"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
 		1000000000000000,
 		2,
 		"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
-		"channel",
+		"web",
 		1678950866)
-
-	//链接ETH网络
-	conn, err := GetEthConn()
-	if err != nil {
-		fmt.Print("Dial err", err)
-		return
-	}
-
-	defer conn.Close()
-
-	//new合约对象
-	swap, err := router.NewRouter(swapAddress, conn)
-	if err != nil {
-		fmt.Println("NewContract error", err)
-	}
-
-	//调用合约函数
-	owner, err := swap.Owner(&bind.CallOpts{
-		Pending:     false,
-		From:        common.Address{},
-		BlockNumber: nil,
-		Context:     nil,
-	})
-	if err != nil {
-		fmt.Println("Owner error", err)
-	}
-	fmt.Println("Owner=", owner)
-
-	//调用合约函数
-	executor, err := swap.Executor(&bind.CallOpts{
-		Pending:     false,
-		From:        common.Address{},
-		BlockNumber: nil,
-		Context:     nil,
-	})
-	if err != nil {
-		fmt.Println("Owner error", err)
-	}
-	fmt.Println("Executor=", executor)
-
-}
-
-func swapExactETHForTokens() {
+	//
+	////链接ETH网络
+	//conn, err := GetEthConn()
+	//if err != nil {
+	//	fmt.Print("Dial err", err)
+	//	return
+	//}
+	//
+	//defer conn.Close()
+	//
+	////new合约对象
+	//swap, err := router.NewRouter(swapAddress, conn)
+	//if err != nil {
+	//	fmt.Println("NewContract error", err)
+	//}
+	//
+	////调用合约函数
+	//owner, err := swap.Owner(&bind.CallOpts{
+	//	Pending:     false,
+	//	From:        common.Address{},
+	//	BlockNumber: nil,
+	//	Context:     nil,
+	//})
+	//if err != nil {
+	//	fmt.Println("Owner error", err)
+	//}
+	//fmt.Println("Owner=", owner)
+	//
+	////调用合约函数
+	//executor, err := swap.Executor(&bind.CallOpts{
+	//	Pending:     false,
+	//	From:        common.Address{},
+	//	BlockNumber: nil,
+	//	Context:     nil,
+	//})
+	//if err != nil {
+	//	fmt.Println("Owner error", err)
+	//}
+	//fmt.Println("Executor=", executor)
 
 }
