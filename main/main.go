@@ -89,17 +89,17 @@ func swap(
 	fmt.Println("swapExactETHForTokensData:", hex.EncodeToString(swapExactETHForTokensData))
 
 	var (
-		aggregateDescriptionTt, _ = abi.NewType("tuple", "aggregateDesc", []abi.ArgumentMarshaling{
-			{Name: "DstToken", Type: "address"},
-			{Name: "Receiver", Type: "address"},
-			{Name: "Amounts", Type: "string[]"},
-			{Name: "NeedTransfer", Type: "uint64[]"},
-			{Name: "Callers", Type: "address[]"},
-			{Name: "ApproveProxy", Type: "address[]"},
-			{Name: "Calls", Type: "bytes[]"},
+		aggregateDescriptionTy, _ = abi.NewType("tuple", "struct TransitStructs.AggregateDescription", []abi.ArgumentMarshaling{
+			{Name: "DstToken", Type: "address", InternalType: "address"},
+			{Name: "Receiver", Type: "address", InternalType: "address"},
+			{Name: "Amounts", Type: "uint256[]", InternalType: "uint256[]"},
+			{Name: "NeedTransfer", Type: "uint256[]", InternalType: "uint256[]"},
+			{Name: "Callers", Type: "address[]", InternalType: "address"},
+			{Name: "ApproveProxy", Type: "address[]", InternalType: "address"},
+			{Name: "Calls", Type: "bytes[]", InternalType: "bytes[]"},
 		})
 		args = abi.Arguments{
-			{Type: aggregateDescriptionTt},
+			{Type: aggregateDescriptionTy},
 		}
 	)
 
@@ -107,16 +107,16 @@ func swap(
 	record := struct {
 		DstToken     common.Address
 		Receiver     common.Address
-		Amounts      []string
-		NeedTransfer []uint64
+		Amounts      []*big.Int
+		NeedTransfer []*big.Int
 		Callers      []common.Address
 		ApproveProxy []common.Address
 		Calls        [][]byte
 	}{
 		DstToken:     common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
 		Receiver:     common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
-		Amounts:      []string{amount.String()},                                                           //[]big.Int{*big.NewInt(997000000000000)},
-		NeedTransfer: []uint64{0},                                                                         //[]big.Int{*big.NewInt(0)},
+		Amounts:      []*big.Int{amount},                                                                  //[]big.Int{*big.NewInt(997000000000000)},
+		NeedTransfer: []*big.Int{big.NewInt(0)},                                                           //[]big.Int{*big.NewInt(0)},
 		Callers:      []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
 		ApproveProxy: []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
 		Calls:        [][]byte{swapExactETHForTokensData},
@@ -202,6 +202,15 @@ func main() {
 	c := new(big.Int).Sub(a, b)
 	fmt.Println("a=%s,b=%s,c=%s", a, b, c)
 
+	//x := uint(922337203685477580700000)
+	//print(x)
+
+	//s := "922337203685477580700"
+	//intNum, _ := strconv.Atoi(s)
+	//fmt.Print(uint64(intNum))
+
+	fmt.Println("xxx")
+
 	swap(
 		"0x0000000000000000000000000000000000000000",
 		"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
@@ -210,7 +219,7 @@ func main() {
 		"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
 		"web",
 		1678950866)
-	//
+
 	////链接ETH网络
 	//conn, err := GetEthConn()
 	//if err != nil {
@@ -225,18 +234,6 @@ func main() {
 	//if err != nil {
 	//	fmt.Println("NewContract error", err)
 	//}
-	//
-	////调用合约函数
-	//owner, err := swap.Owner(&bind.CallOpts{
-	//	Pending:     false,
-	//	From:        common.Address{},
-	//	BlockNumber: nil,
-	//	Context:     nil,
-	//})
-	//if err != nil {
-	//	fmt.Println("Owner error", err)
-	//}
-	//fmt.Println("Owner=", owner)
 	//
 	////调用合约函数
 	//executor, err := swap.Executor(&bind.CallOpts{

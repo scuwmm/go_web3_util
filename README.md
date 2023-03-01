@@ -45,36 +45,37 @@
 #### go 结构体encode （abi.encode(结构体)）
 
 	var (
-		aggregateDescriptionTt, _ = abi.NewType("tuple", "aggregateDesc", []abi.ArgumentMarshaling{
-			{Name: "field_one", Type: "address"},
-			{Name: "field_two", Type: "address"},
-			{Name: "field_three", Type: "uint64[]"},
-			{Name: "field_four", Type: "uint64[]"},
-			{Name: "field_five", Type: "address[]"},
-			{Name: "field_six", Type: "address[]"},
-			{Name: "field_seven", Type: "bytes[]"},
+		aggregateDescriptionTy, _ = abi.NewType("tuple", "struct TransitStructs.AggregateDescription", []abi.ArgumentMarshaling{
+			{Name: "DstToken", Type: "address", InternalType: "address"},
+			{Name: "Receiver", Type: "address", InternalType: "address"},
+			{Name: "Amounts", Type: "uint256[]", InternalType: "uint256[]"},
+			{Name: "NeedTransfer", Type: "uint256[]", InternalType: "uint256[]"},
+			{Name: "Callers", Type: "address[]", InternalType: "address"},
+			{Name: "ApproveProxy", Type: "address[]", InternalType: "address"},
+			{Name: "Calls", Type: "bytes[]", InternalType: "bytes[]"},
 		})
 		args = abi.Arguments{
-			{Type: aggregateDescriptionTt},
+			{Type: aggregateDescriptionTy},
 		}
 	)
 
+	amount := big.NewInt(int64(997000000000000))
 	record := struct {
-		FieldOne   common.Address
-		FieldTwo   common.Address
-		FieldThree []uint64
-		FieldFour  []uint64
-		FieldFive  []common.Address
-		FieldSix   []common.Address
-		FieldSeven [][]byte
+		DstToken     common.Address
+		Receiver     common.Address
+		Amounts      []*big.Int
+		NeedTransfer []*big.Int
+		Callers      []common.Address
+		ApproveProxy []common.Address
+		Calls        [][]byte
 	}{
-		common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
-		common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
-		[]uint64{997000000000000}, //[]big.Int{*big.NewInt(997000000000000)},
-		[]uint64{0},               //[]big.Int{*big.NewInt(0)},
-		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
-		[]common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
-		[][]byte{swapExactETHForTokensData},
+		DstToken:     common.HexToAddress("0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d"),
+		Receiver:     common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563"),
+		Amounts:      []*big.Int{amount},                                                                  //[]big.Int{*big.NewInt(997000000000000)},
+		NeedTransfer: []*big.Int{big.NewInt(0)},                                                           //[]big.Int{*big.NewInt(0)},
+		Callers:      []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		ApproveProxy: []common.Address{common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")}, //swap path
+		Calls:        [][]byte{swapExactETHForTokensData},
 	}
 
 	packed, err := args.Pack(&record)
