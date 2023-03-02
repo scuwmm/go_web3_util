@@ -8,20 +8,27 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
+	"scumm/go_contract_util/floki"
 	"scumm/go_contract_util/pancake"
+	"scumm/go_contract_util/pancakefactory"
 	"scumm/go_contract_util/router"
 	"strings"
 )
 
 var (
-	//初始化网络、私钥、地址等
-	netUrl        = "https://goerli.infura.io/v3/49fb3b593a324bffa7bcd9653f73f7c3"
+	//网络
+	netUrl = "https://goerli.infura.io/v3/49fb3b593a324bffa7bcd9653f73f7c3"
+	//测试私钥
 	privateKey, _ = crypto.HexToECDSA("c9dc95a37d3e5954a176ffb375840f6d6aaefc2dc038abb99b56a7bb74d3a9d6")
-	fromAddress   = common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
-	swapAddress   = common.HexToAddress("0x1fb8547525Ce41Ec1CeCb2763b8E5DfF7A0B46c3")
+	//发起者
+	fromAddress = common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
+	//transit router
+	routerAddress = common.HexToAddress("0x1fb8547525Ce41Ec1CeCb2763b8E5DfF7A0B46c3")
 	//pancake router合约地址
 	pancakeAddress = common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 )
@@ -147,7 +154,7 @@ func swap(
 	auth.GasLimit = uint64(300000)
 	auth.Value = big.NewInt(1000000000000000)
 
-	swap, err := router.NewRouter(swapAddress, conn)
+	swap, err := router.NewRouter(routerAddress, conn)
 	if err != nil {
 		fmt.Println("NewContract error", err)
 	}
@@ -195,56 +202,106 @@ func GetEthConn() (*ethclient.Client, error) {
 
 func main() {
 
-	fmt.Println(new(big.Int).SetString("999", 10))
+	conn, err := GetEthConn()
+	if err != nil {
+		fmt.Print("Dial err", err)
+		return
+	}
 
-	a := big.NewInt(100)
-	b := big.NewInt(10)
-	c := new(big.Int).Sub(a, b)
-	fmt.Println("a=%s,b=%s,c=%s", a, b, c)
+	defer conn.Close()
 
-	//x := uint(922337203685477580700000)
-	//print(x)
+	//Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xD4C95beDC1ef456B75a8BFeB255C3e7468F2840d")
+	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073")
+	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
+	//Allowance(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+	GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
 
-	//s := "922337203685477580700"
-	//intNum, _ := strconv.Atoi(s)
-	//fmt.Print(uint64(intNum))
+	//swap(
+	//	"0x0000000000000000000000000000000000000000",
+	//	"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
+	//	1000000000000000,
+	//	2,
+	//	"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
+	//	"web",
+	//	1678950866)
 
-	fmt.Println("xxx")
+}
 
-	swap(
-		"0x0000000000000000000000000000000000000000",
-		"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
-		1000000000000000,
-		2,
-		"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
-		"web",
-		1678950866)
+func GetPair(conn *ethclient.Client, factory string, token0 string, token1 string) {
+	//fmt.Println(time.Now().UnixMilli())
+	pancakeFactory, err := pancakefactory.NewPancakefactory(common.HexToAddress(factory), conn)
+	if err != nil {
+		return
+	}
+	pair, err := pancakeFactory.GetPair(&bind.CallOpts{}, common.HexToAddress(token0), common.HexToAddress(token1))
+	//fmt.Println(time.Now().UnixMilli())
+	if err != nil {
+		fmt.Println("GetPair failed")
+	}
+	fmt.Print("pair: ", pair.String())
+}
 
-	////链接ETH网络
-	//conn, err := GetEthConn()
-	//if err != nil {
-	//	fmt.Print("Dial err", err)
-	//	return
-	//}
-	//
-	//defer conn.Close()
-	//
-	////new合约对象
-	//swap, err := router.NewRouter(swapAddress, conn)
-	//if err != nil {
-	//	fmt.Println("NewContract error", err)
-	//}
-	//
-	////调用合约函数
-	//executor, err := swap.Executor(&bind.CallOpts{
-	//	Pending:     false,
-	//	From:        common.Address{},
-	//	BlockNumber: nil,
-	//	Context:     nil,
-	//})
-	//if err != nil {
-	//	fmt.Println("Owner error", err)
-	//}
-	//fmt.Println("Executor=", executor)
+func BalanceOf(conn *ethclient.Client, contract string, addr string) {
+	token, err := floki.NewFloki(common.HexToAddress(contract), conn)
+	if err != nil {
+		return
+	}
 
+	balance, err := token.BalanceOf(&bind.CallOpts{
+		Pending:     false,
+		From:        common.Address{},
+		BlockNumber: nil,
+		Context:     nil,
+	}, common.HexToAddress(addr))
+
+	if err != nil {
+		log.Error("BalanceOf failed.")
+	}
+
+	fmt.Println("balance= ", balance)
+}
+
+func Allowance(conn *ethclient.Client, contract string, owner string, spender string) {
+	token, err := floki.NewFloki(common.HexToAddress(contract), conn)
+	if err != nil {
+		return
+	}
+	r, err := token.Allowance(&bind.CallOpts{}, common.HexToAddress(owner), common.HexToAddress(spender))
+	if err != nil {
+		fmt.Println("Allowance error")
+	}
+	fmt.Println("Allowance r=", r)
+}
+
+func Approve(conn *ethclient.Client, contract string, spender string) {
+	token, err := floki.NewFloki(common.HexToAddress(contract), conn)
+	if err != nil {
+		return
+	}
+
+	auth, _ := BuildTransactOpts(conn, big.NewInt(0))
+
+	r, err := token.Approve(auth, common.HexToAddress(spender), math.MaxBig256)
+	if err != nil {
+		log.Error("Approve failed.")
+	}
+	log.Info("Approve tx= ", r.Hash())
+}
+
+func BuildTransactOpts(conn *ethclient.Client, value *big.Int) (*bind.TransactOpts, error) {
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(5))
+	if err != nil {
+		return nil, errors.New("NewKeyedTransactorWithChainID err")
+	}
+	//设置GasPrice
+	gasPrice, _ := conn.SuggestGasPrice(context.Background())
+	auth.GasPrice = gasPrice.Mul(gasPrice, big.NewInt(10))
+	//设置Nonce
+	nonce, _ := conn.PendingNonceAt(context.Background(), fromAddress)
+	fmt.Println("nonce=", nonce)
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.GasLimit = uint64(300000)
+	auth.Value = value
+
+	return auth, nil
 }
