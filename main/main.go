@@ -12,7 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/shopspring/decimal"
 	"math/big"
+	"scumm/go_contract_util/chainlink"
 	"scumm/go_contract_util/floki"
 	"scumm/go_contract_util/pancake"
 	"scumm/go_contract_util/pancakefactory"
@@ -32,6 +34,39 @@ var (
 	//pancake router合约地址
 	pancakeAddress = common.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 )
+
+func main() {
+
+	conn, err := GetEthConn()
+	if err != nil {
+		fmt.Println("Dial err", err)
+		return
+	}
+
+	defer conn.Close()
+
+	fmt.Println(10 << 5)
+	fmt.Println(math.BigPow(1, 5))
+
+	//decimal
+	//Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xD4C95beDC1ef456B75a8BFeB255C3e7468F2840d")
+	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073")
+	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
+	//Allowance(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+	GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
+
+	// Chainlink价格预言机： https://docs.chain.link/data-feeds/price-feeds/addresses
+	GetPrice(conn, "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e")
+	//swap(
+	//	"0x0000000000000000000000000000000000000000",
+	//	"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
+	//	1000000000000000,
+	//	2,
+	//	"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
+	//	"web",
+	//	1678950866)
+
+}
 
 func swap(
 	token0 string,
@@ -200,31 +235,24 @@ func GetEthConn() (*ethclient.Client, error) {
 	return conn, nil
 }
 
-func main() {
-
-	conn, err := GetEthConn()
+func GetPrice(conn *ethclient.Client, priceContract string) {
+	oracle, err := chainlink.NewChainlink(common.HexToAddress(priceContract), conn)
 	if err != nil {
-		fmt.Print("Dial err", err)
-		return
+		fmt.Println("GetPrice error")
+	}
+	precision, err := oracle.Decimals(&bind.CallOpts{})
+	if err != nil {
+		fmt.Println("GetPrice error1")
 	}
 
-	defer conn.Close()
-
-	//Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xD4C95beDC1ef456B75a8BFeB255C3e7468F2840d")
-	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073")
-	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
-	//Allowance(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
-	GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
-
-	//swap(
-	//	"0x0000000000000000000000000000000000000000",
-	//	"0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d",
-	//	1000000000000000,
-	//	2,
-	//	"0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563",
-	//	"web",
-	//	1678950866)
-
+	price, err := oracle.LatestRoundData(&bind.CallOpts{})
+	if err != nil {
+		fmt.Print("GetPrice error2")
+	}
+	// 价格/精度
+	fmt.Println("price = ", decimal.NewFromBigInt(price.Answer, 0).DivRound(decimal.NewFromBigInt(math.BigPow(10, int64(precision)), 0), 3))
+	//fmt.Println(decimal.NewFromInt(int64(precision)))
+	//fmt.Println("price = ", new(big.Int).Div(price.Answer, math.BigPow(10, int64(precision))))
 }
 
 func GetPair(conn *ethclient.Client, factory string, token0 string, token1 string) {
@@ -238,7 +266,7 @@ func GetPair(conn *ethclient.Client, factory string, token0 string, token1 strin
 	if err != nil {
 		fmt.Println("GetPair failed")
 	}
-	fmt.Print("pair: ", pair.String())
+	fmt.Println("pair: ", pair.String())
 }
 
 func BalanceOf(conn *ethclient.Client, contract string, addr string) {
