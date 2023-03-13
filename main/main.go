@@ -45,9 +45,6 @@ func main() {
 
 	defer conn.Close()
 
-	fmt.Println(10 << 5)
-	fmt.Println(math.BigPow(1, 5))
-
 	//decimal
 
 	//查询余额
@@ -61,10 +58,10 @@ func main() {
 	//Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xD4C95beDC1ef456B75a8BFeB255C3e7468F2840d")
 
 	//查询是否是交易对/池子
-	GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
+	//GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
 
 	// Chainlink价格预言机： https://docs.chain.link/data-feeds/price-feeds/addresses
-	GetPrice(conn, "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e")
+	//GetPrice(conn, "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e")
 
 	//swap(
 	//	"0x0000000000000000000000000000000000000000",
@@ -75,6 +72,20 @@ func main() {
 	//	"web",
 	//	1678950866)
 
+	c := make(chan int, 10)
+	chanTest(cap(c), c)
+
+}
+
+func chanTest(n int, c chan int) {
+	defer close(c)
+	for i := 0; i < n; i++ {
+		c <- i
+	}
+
+	for i := range c {
+		fmt.Println(i)
+	}
 }
 
 func swap(
