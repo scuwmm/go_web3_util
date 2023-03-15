@@ -16,6 +16,8 @@ import (
 	"math/big"
 	"scumm/go_contract_util/chainlink"
 	"scumm/go_contract_util/floki"
+	"scumm/go_contract_util/gf256"
+	"scumm/go_contract_util/keccka256"
 	"scumm/go_contract_util/pancake"
 	"scumm/go_contract_util/pancakefactory"
 	"scumm/go_contract_util/router"
@@ -37,13 +39,13 @@ var (
 
 func main() {
 
-	conn, err := GetEthConn()
-	if err != nil {
-		fmt.Println("Dial err", err)
-		return
-	}
-
-	defer conn.Close()
+	//conn, err := GetEthConn()
+	//if err != nil {
+	//	fmt.Println("Dial err", err)
+	//	return
+	//}
+	//
+	//defer conn.Close()
 
 	//decimal
 
@@ -72,20 +74,19 @@ func main() {
 	//	"web",
 	//	1678950866)
 
-	c := make(chan int, 10)
-	chanTest(cap(c), c)
+	keccka256.Encrypt("12abcefgdfdfdfd")
+	keccka256.Encrypt("23入口可怕3rf")
+
+	d, _ := hex.DecodeString("1f417B5b71EF004Ff290c57b21A7136B3940D9Fa")
+	fmt.Println(d)
 
 }
 
-func chanTest(n int, c chan int) {
-	defer close(c)
-	for i := 0; i < n; i++ {
-		c <- i
-	}
+func gf256Add() {
+	a := gf256.NewField(0x11d, 2)
 
-	for i := range c {
-		fmt.Println(i)
-	}
+	r := a.Add(241, 50)
+	fmt.Println("gf256Add= ", r)
 }
 
 func swap(
