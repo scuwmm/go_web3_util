@@ -13,7 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/shopspring/decimal"
+	"github.com/tyler-smith/go-bip39"
 	"math/big"
+	"reflect"
 	"scumm/go_contract_util/chainlink"
 	"scumm/go_contract_util/floki"
 	"scumm/go_contract_util/gf256"
@@ -74,19 +76,47 @@ func main() {
 	//	"web",
 	//	1678950866)
 
-	keccka256.Encrypt("12abcefgdfdfdfd")
-	keccka256.Encrypt("23入口可怕3rf")
+	//d, _ := hex.DecodeString("1f417B5b71EF004Ff290c57b21A7136B3940D9Fa")
+	//fmt.Println(d)
 
-	d, _ := hex.DecodeString("1f417B5b71EF004Ff290c57b21A7136B3940D9Fa")
-	fmt.Println(d)
+	gf256Cul()
 
 }
 
-func gf256Add() {
-	a := gf256.NewField(0x11d, 2)
+// 1.生成助记词
+// 2.通过助记词 + 密码 生成 守护码
+// 3.通过守护码 + 密码 解析出 助记词
+func gf256Cul() {
 
-	r := a.Add(241, 50)
-	fmt.Println("gf256Add= ", r)
+	entropy, err := bip39.NewEntropy(128)
+	if err != nil {
+		fmt.Println("NewEntropy error")
+		return
+	}
+
+	mnemonic, _ := bip39.NewMnemonic(entropy)
+	fmt.Println(mnemonic)
+
+	//密码
+	y_1 := keccka256.Encrypt("12abcefgdfdfdfd")
+	fmt.Println("密码 = ", y_1)
+
+	//助记词
+	y0 := entropy
+	fmt.Println("助记词 = ", y0)
+
+	//守护码
+	y1, _ := gf256.ToGuardCode(y_1, y0)
+	fmt.Println("密码+助记词生成 守护码 = ", y1)
+
+	//反推的助记词
+	y02, _ := gf256.ToPriKey(y_1, y1)
+	fmt.Println("密码+守护码生成 助记词 =", y02)
+
+	fmt.Println("是否正确的解析：", reflect.DeepEqual(y0, y02))
+
+	//fmt.Println(hex.EncodeToString(y02))
+
 }
 
 func swap(

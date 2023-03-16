@@ -5,7 +5,9 @@
 // Package gf256 implements arithmetic over the Galois Field GF(256).
 package gf256
 
-import "strconv"
+import (
+	"strconv"
+)
 
 // A Field represents an instance of GF(256) defined by a specific polynomial.
 type Field struct {
@@ -30,6 +32,7 @@ func NewField(poly, α int) *Field {
 			panic("gf256: invalid generator " + strconv.Itoa(α) +
 				" for polynomial " + strconv.Itoa(poly))
 		}
+		//fmt.Println("x=", x)
 		f.exp[i] = byte(x)
 		f.exp[i+255] = byte(x)
 		f.log[x] = byte(i)
@@ -49,6 +52,9 @@ func NewField(poly, α int) *Field {
 			panic("bad log")
 		}
 	}
+
+	//fmt.Println("log=", f.log)
+	//fmt.Println("exp=", f.exp)
 
 	return &f
 }

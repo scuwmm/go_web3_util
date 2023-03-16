@@ -1,0 +1,9 @@
+
+
+// gf256除法其实就是gf256乘法的逆元，因此可以使用扩展欧几里得算法求解
+// 扩展欧几里得算法：https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+
+
+// y_1（密码）：y-1 通过密码生成的hash值 []byte后16位
+// y0（私钥）：128bit （16byte）的助记词
+// y1（守护码）： (y_1 + y0)/2 = y1 ; 由此可以计算 y0 = 2*y1 - y_1
