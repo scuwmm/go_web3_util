@@ -34,7 +34,7 @@ func CalculateEntropy(y_1 []byte, y1 []byte) ([]byte, error) {
 
 	field256 := NewField(0x11d, 2)
 	leftArr := y_1[(len(y_1) - lengthOfBytes):]
-	rightArr := y1[(len(y_1) - lengthOfBytes):]
+	rightArr := y1[(len(y1) - lengthOfBytes):]
 	midArr := make([]byte, lengthOfBytes)
 	for i, left := range leftArr {
 		right := rightArr[i]
