@@ -86,3 +86,11 @@
 	fmt.Println("Pack1 data:", hex.EncodeToString(packed))
 
 
+#### GO生成 android SDK 
+    1.安装android环境： android studio ; android SDK; android NDK   
+    2.安装gomobile  go get xxxx
+    3.gomobile init
+    4.gomobile bind -target=android package_name
+    生成 aar 和 jar包，android使用 aar包
+
+
