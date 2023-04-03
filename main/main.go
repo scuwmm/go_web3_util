@@ -30,9 +30,9 @@ var (
 	//网络
 	netUrl = "https://goerli.infura.io/v3/49fb3b593a324bffa7bcd9653f73f7c3"
 	//测试私钥
-	privateKey, _ = crypto.HexToECDSA("c9dc95a37d3e5954a176ffb375840f6d6aaefc2dc038abb99b56a7bb74d3a9d6")
+	privateKey, _ = crypto.HexToECDSA("7f47e8366be88b5519012f0849f0527b695807cc8cd10bab4075f0ee83b250fb")
 	//发起者
-	fromAddress = common.HexToAddress("0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
+	fromAddress = common.HexToAddress("0x1f417B5b71EF004Ff290c57b21A7136B3940D9Fa")
 	//transit router
 	routerAddress = common.HexToAddress("0x1fb8547525Ce41Ec1CeCb2763b8E5DfF7A0B46c3")
 	//pancake router合约地址
@@ -41,13 +41,13 @@ var (
 
 func main() {
 
-	//conn, err := GetEthConn()
-	//if err != nil {
-	//	fmt.Println("Dial err", err)
-	//	return
-	//}
-	//
-	//defer conn.Close()
+	conn, err := GetEthConn()
+	if err != nil {
+		fmt.Println("Dial err", err)
+		return
+	}
+
+	defer conn.Close()
 
 	//decimal
 
@@ -56,10 +56,10 @@ func main() {
 	//BalanceOf(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0x03Ca6DEfffD0ed6d9540d770ee8EC33D0EC57563")
 
 	//查询某个地址是否可以操作自己的资产
-	//Allowance(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xAac4310416dcc69643876c0143cf897DE9db7073", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+	Allowance(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0x1f417B5b71EF004Ff290c57b21A7136B3940D9Fa", "0xaD2814025953D92fD0EE43E4ee29105A9D0578AC")
 
 	//同意某个地址操作自己的资产
-	//Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xD4C95beDC1ef456B75a8BFeB255C3e7468F2840d")
+	Approve(conn, "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d", "0xaD2814025953D92fD0EE43E4ee29105A9D0578AC")
 
 	//查询是否是交易对/池子
 	//GetPair(conn, "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x302BaE587Ab9E1667a2d2b0FD67730FEfDD1AB2d")
@@ -79,7 +79,7 @@ func main() {
 	//d, _ := hex.DecodeString("1f417B5b71EF004Ff290c57b21A7136B3940D9Fa")
 	//fmt.Println(d)
 
-	gf256Cul()
+	//gf256Cul()
 
 }
 
@@ -364,9 +364,9 @@ func Approve(conn *ethclient.Client, contract string, spender string) {
 
 	r, err := token.Approve(auth, common.HexToAddress(spender), math.MaxBig256)
 	if err != nil {
-		log.Error("Approve failed.")
+		fmt.Println("Approve failed.")
 	}
-	log.Info("Approve tx= ", r.Hash())
+	fmt.Println("Approve tx= ", r.Hash())
 }
 
 func BuildTransactOpts(conn *ethclient.Client, value *big.Int) (*bind.TransactOpts, error) {
@@ -381,7 +381,7 @@ func BuildTransactOpts(conn *ethclient.Client, value *big.Int) (*bind.TransactOp
 	nonce, _ := conn.PendingNonceAt(context.Background(), fromAddress)
 	fmt.Println("nonce=", nonce)
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.GasLimit = uint64(300000)
+	auth.GasLimit = uint64(600000)
 	auth.Value = value
 
 	return auth, nil

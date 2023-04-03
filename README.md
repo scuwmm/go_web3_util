@@ -90,7 +90,7 @@
     1.安装android环境： android studio ; android SDK; android NDK   
     2.安装gomobile  go get xxxx
     3.gomobile init
-    4.gomobile bind -target=android package_name
+    4.gomobile bind -target=android package_name 例如： gomobile bind -target=android ./gf256 
     生成 aar 和 jar包，android使用 aar包
 
 
